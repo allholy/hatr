@@ -213,8 +213,8 @@ def train_model(model, train_loader, val_loader, device,
 
         if val_accuracy > best_accuracy:
             best_accuracy = val_accuracy
-            # torch.save(model.state_dict(), os.path.join(output_dir, "best_model.pth"))  # model parameters
-            torch.save(model, os.path.join(output_dir, "best_model.pt"))  # whole model 
+            torch.save(model.state_dict(), os.path.join(output_dir, "best_model.pth"))  # model parameters
+            # torch.save(model, os.path.join(output_dir, "best_model.pt"))  # whole model 
             print(f"New best model saved: {best_accuracy:.2f}%")
             epochs_without_improvement = 0
         else:
