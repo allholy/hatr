@@ -6,7 +6,7 @@ HATR is a hierarchical-aware multimodal classifier for audio and text embeddings
 
 1. Set the input and output paths in `config.yaml`. Make sure the paths point to the correct directories or files before running the model.
 
-2. Run create_full_dataframe.py
+2. Run build_dataset_full.py
 
 3. Run train.py
 
