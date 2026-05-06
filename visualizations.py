@@ -25,7 +25,9 @@ class BaseVisualizer:
         os.makedirs(output_dir, exist_ok=True)
 
         # Rename using CSV mapping
-        class_names_path = get_subconfig("class_names")  # class names path
+        active_dataset_name = get_subconfig("active_dataset")
+        datasets_cfg = get_subconfig("datasets")
+        class_names_path = datasets_cfg[active_dataset_name]["class_names"]
         self.class_names = self._rename_class_names_from_csv(class_names_path)
 
     def _rename_class_names_from_csv(self, csv_path):

@@ -1,9 +1,19 @@
 # INPUT PATHS 
-metadata_csv: "/media/anastp/DATA/datasets/BSD10k/BSD10k-v1.1/metadata/BSD10k_metadata.csv" # Metadata CSV file
-audio_emb_folder: "/media/anastp/DATA/datasets/BSD10k/BSD10k-v1.1/features/clap_audio_embeddings" # Folder containing audio embeddings
-text_emb_folder: "/media/anastp/DATA/datasets/BSD10k/BSD10k-v1.1/features/clap_text_embeddings" # Folder containing text embeddings
-class_names: "/home/anastp/Desktop/doctora/components/taxonomy/data/bst_description_v1.1.csv"
-color_dict_path: "/home/anastp/Desktop/doctora-code/bst_analysis/bst_colours.json" # Class color dictionary JSON file
+active_dataset: BSD10k-v1.2  # Choose dataset
+datasets:
+  BSD10k-v1.2:
+    metadata_csv: "./data/BSD10k-v1.2/metadata/BSD10k_metadata.csv" # Metadata CSV file
+    audio_emb_folder: "./data/BSD10k-v1.2/features/clap_audio_embeddings" # Folder containing audio embeddings
+    text_emb_folder: "./data/BSD10k-v1.2/features/clap_text_embeddings" # Folder containing text embeddings
+    class_names: "./data/BSD10k-v1.2/metadata/BST_description.csv"  # Taxonomy CSV file containing class names
+
+  BSD35k-CS:
+    metadata_csv: "./data/BSD35k-CS/metadata/BSD35k-CS_metadata.csv"
+    audio_emb_folder: "./data/BSD35k-CS/features/clap_audio_embeddings"
+    text_emb_folder: "./data/BSD35k-CS/features/clap_text_embeddings"
+    class_names: "./data/BSD35k-CS/metadata/BST_description.csv"
+
+color_dict_path: "./data/bst_colours.json" # Class color dictionary JSON file
 
 # OUTPUT PATHS
 output_path: "data"

@@ -21,7 +21,12 @@ current_time = datetime.now().strftime("%y%m%d-%H:%M")
 
 
 # Paths
-dataset_path = get_subconfig("metadata_csv")
+active_dataset_name = get_subconfig("active_dataset")
+datasets_cfg = get_subconfig("datasets")
+if active_dataset_name not in datasets_cfg:
+    raise KeyError(f"Active dataset '{active_dataset_name}' not found in config.datasets")
+
+dataset_path = datasets_cfg[active_dataset_name]["metadata_csv"]
 color_dict_path = get_subconfig("color_dict_path")
 top_color_dict_path = get_subconfig("top_color_dict_path")
 
@@ -421,6 +426,7 @@ if __name__ == "__main__":
     k_folds = 5
 
     full_df = pd.read_csv(prepared_dataset_path)
+    print(dataset_path)
     full_df_confidence = pd.read_csv(dataset_path)
     high_conf_df = full_df_confidence[full_df_confidence['confidence'] >= 0]
     full_df = full_df[full_df['index'].isin(high_conf_df['sound_id'])]

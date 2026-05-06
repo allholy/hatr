@@ -6,7 +6,9 @@ from utils import get_subconfig
 
 base_coordinates = "model_output/t-contr_ce_penalty/both/fold_4/latent_visualization"
 
-metadata = get_subconfig("metadata_csv")
+active_dataset_name = get_subconfig("active_dataset")
+datasets_cfg = get_subconfig("datasets")
+metadata = datasets_cfg[active_dataset_name]["metadata_csv"]
 color_dict_path = get_subconfig("color_dict_path")
 
 with open(os.path.join(base_coordinates, "pca_data.json")) as f:
