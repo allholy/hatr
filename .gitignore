@@ -1,3 +1,4 @@
 model_output*
 **/__pycache__/
-**/data/*
+data/*
+!data/bst_colours.json
