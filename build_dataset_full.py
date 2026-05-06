@@ -6,13 +6,23 @@ from utils import get_subconfig
 """
 The dataset is built from existing embedding (.npy) files identified by sound_id.
 A sample is included only if both audio and text embeddings exist and a matching metadata 
-entry is found.
+entry is found. The metadata is used to assign class and top-class labels, which are also saved as JSON files.
+By default, we exclude top-level classes and classes that belong to the "-other" category.
 """
 
-# Filepaths
-metadata_csv = get_subconfig("metadata_csv")
-audio_emb_folder = get_subconfig("audio_emb_folder")
-text_emb_folder = get_subconfig("text_emb_folder")
+def load_and_merge(datasets_cfg, dataset_names):
+    dfs = []
+    for name in dataset_names:
+        df = pd.read_csv(datasets_cfg[name]["metadata_csv"])
+        df["sound_id"] = df["sound_id"].astype(str).str.strip()
+        dfs.append(df)
+    return pd.concat(dfs, ignore_index=True)
+
+# --- Filepaths ---
+dataset_name = get_subconfig("active_dataset")
+metadata_csv = get_subconfig("datasets")[dataset_name]["metadata_csv"]
+audio_emb_folder = get_subconfig("datasets")[dataset_name]["audio_emb_folder"]
+text_emb_folder = get_subconfig("datasets")[dataset_name]["text_emb_folder"]
 
 output_path = get_subconfig("output_path")
 os.makedirs(output_path, exist_ok=True)
@@ -21,15 +31,51 @@ class_dict_json = os.path.join(output_path, get_subconfig("class_dict_json"))
 top_class_dict_json = os.path.join(output_path, get_subconfig("top_class_dict_json"))
 top_class_subclass_dict_json = os.path.join(output_path, get_subconfig("top_class_subclass_dict_json"))
 
-# Make files
+# --- Load metadata and build cat mappings ---
 df = pd.read_csv(metadata_csv)
+df['sound_id'] = df['sound_id'].astype(str).str.strip()
 
-class_dict = dict(zip(df['class'], df['class_idx']))
+print(f"Examining original data from {dataset_name}:")
+print(f"  Total rows: {len(df)}")
+print(f"  Unique classes: {df['class'].nunique()}")
+
+# Discard top-level cats and cats that belong to "-other" category
+s = df['class_idx'].astype(str)
+df = df[~((s.str.len() == 3) & (s.str.endswith('99') | s.str.endswith('00')))].copy()
+print("After filtering:", len(df))
+
+df['original_class_idx'] = df['class_idx']
+
+# --- Map class_idx → 0..N for training ---
+original_indices = sorted(df['original_class_idx'].unique())
+index_mapping = {orig: new for new, orig in enumerate(original_indices)}
+df['class_idx'] = df['original_class_idx'].map(index_mapping)
+
+# --- top cat ---
 df['class_top'] = df['class'].apply(lambda x: x.split('-')[0] if isinstance(x, str) else None)
-class_top_dict = {class_top: idx for idx, class_top in enumerate(df['class_top'].unique())}
+
+df_sorted = df.sort_values('original_class_idx')
+
+top_classes = df_sorted['class_top'].drop_duplicates()
+class_top_dict = {cls: i for i, cls in enumerate(top_classes)}
+
+df['top_class_idx'] = df['class_top'].map(class_top_dict)
+
+# --- cat dict ---
+class_dict = dict(zip(df['class'], df['class_idx']))
+
+# --- subcat dict ---
 class_top_subclass_dict = {
-    top_class: {subclass: idx for idx, subclass in enumerate(df[df['class_top'] == top_class]['class'].unique())}
-    for top_class in df['class_top'].unique()
+    top_class: {
+        subclass: idx
+        for idx, subclass in enumerate(
+            df[df['class_top'] == top_class]
+            .sort_values('original_class_idx') 
+            ['class']
+            .drop_duplicates()
+        )
+    }
+    for top_class in class_top_dict.keys()
 }
 
 with open(class_dict_json, 'w') as f:
@@ -46,36 +92,27 @@ print(f"Saved top class subclass dictionary to {top_class_subclass_dict_json}")
 
 records = []
 
-for file in os.listdir(audio_emb_folder):
-    if not file.endswith(".npy"):
-        continue
-
-    sound_id = os.path.splitext(file)[0]
-    try:
-        sound_id_int = int(sound_id)
-    except ValueError:
-        print(f"Skipping invalid file name: {file}")
-        continue
-
-    match = df[df['sound_id'] == sound_id_int]
-    if match.empty:
-        print(f"Warning: No match for sound_id {sound_id} in metadata.")
-        continue
-
-    text_file = f"{sound_id}.npy"
-    text_filepath = os.path.join(text_emb_folder, text_file)
-    if not os.path.isfile(text_filepath):
-        print(f"Missing spectrogram for sound_id {sound_id}")
-        continue
-
-    class_top = match['class_top'].values[0]
-    class_top_idx = class_top_dict.get(class_top, -1)
-    class_name = match['class'].values[0]
-    class_idx = int(match['class_idx'].values[0])
-    relative_class_idx = class_top_subclass_dict[class_top].get(class_name, -1)
+df.set_index('sound_id', inplace=True)
+for sound_id in df.index:
+    file = f"{sound_id}.npy"
 
     audio_emb_filepath = os.path.abspath(os.path.join(audio_emb_folder, file))
-    text_emb_filepath = os.path.abspath(text_filepath)
+    text_emb_filepath = os.path.abspath(os.path.join(text_emb_folder, file))
+
+    if not os.path.isfile(audio_emb_filepath):
+        print(f"Missing audio embedding for sound_id {sound_id}")
+        continue
+
+    if not os.path.isfile(text_emb_filepath):
+        print(f"Missing text embedding for sound_id {sound_id}")
+        continue
+
+    match = df.loc[sound_id]
+
+    class_top = match['class_top']
+    class_top_idx = class_top_dict.get(class_top, -1)
+    class_name = match['class']
+    class_idx = int(match['class_idx'])
 
     records.append({
         "index": sound_id,
@@ -90,3 +127,4 @@ for file in os.listdir(audio_emb_folder):
 db_df = pd.DataFrame(records)
 db_df.to_csv(processed_dataset_csv, index=False)
 print(f"Saved embedding dataframe to {processed_dataset_csv}")
+print(f"Dataset built with {len(db_df)} samples.")
