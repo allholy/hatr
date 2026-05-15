@@ -1,4 +1,4 @@
-model_output*
+model*
 **/__pycache__/
 data/*
 !data/bst_colours.json
